@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 import json
 import struct
 
+
 from conf.settings import *
 from utils.common_func import get_file_md5
 
@@ -57,9 +58,10 @@ def receive(conn):
         break
 
 
-def transfer(conn):
+def transfer(conn, mutex):
     """接收客户端选定的要下载的文件路径,并且将对应的文件传送给客户端"""
-    print('当前线程<%s>'%current_thread().name)
+    print('线程<%s>开始准备下载'%current_thread().name)
+    # time.sleep(2)
     while True:
         file_path = conn.recv(8000).decode('utf-8').strip()  # 接收客户端选定的文件路径
         if file_path == CHOICE_FLAG:  # 检查是否是返回主界面命令
@@ -69,7 +71,7 @@ def transfer(conn):
         filename = file_path.split('/')[-1]
         try:
             file_size = os.path.getsize(file_path)
-        except Exception as e:
+        except Exception:
             print('文件名称有误')
         # 制作文件的header信息
         header = {
@@ -81,7 +83,6 @@ def transfer(conn):
         header_obj_bytes = header_obj.encode('utf-8')
         # 将报头字节大小制作成定长字节串并发送给客户端
         header_obj_size = struct.pack('i', len(header_obj_bytes))
-        # mutex.aquire()
         conn.send(header_obj_size)
         conn.send(header_obj_bytes)
         # 读取客户选定的文件并逐行发送给客户端
@@ -91,7 +92,7 @@ def transfer(conn):
         break
 
 
-def run(conn, addr, mutex):
+def run(conn, addr, mutex, username):
     """进入新线程,开始接收数据"""
     print('已连接:当前线程<%s>, 客户端端口<%s>' %(current_thread().name, addr[1]))
     while True:
@@ -106,10 +107,11 @@ def run(conn, addr, mutex):
 
                 elif choice == '2':
                     print('接收到2')
-                    print('线程<%s>开始下载文件' % current_thread().name)
-                    mutex.acquire()
-                    transfer(conn)  # 开始向客户端发送文件
-                    mutex.release()
+                    # print('线程<%s>开始下载文件' % current_thread().name)
+                    # mutex.acquire()  # 加上互斥锁
+                    # print('线程<%s>已经上锁' % current_thread().name)
+                    transfer(conn, mutex)  # 开始向客户端发送文件
+                    # mutex.release()
 
                 elif choice == '5':
                     break  # 响应客户端的操作
@@ -118,6 +120,7 @@ def run(conn, addr, mutex):
             break
     # 若客户端那边的连接断开,那么这边的conn也应该断开
     conn.close()
+    login_user_lst.remove(username)
 
 
 def server(ip, port, pool):
@@ -131,16 +134,34 @@ def server(ip, port, pool):
         print("进入待连接状态>>> ")
         # 主线程停留于此,一直等待
         conn, addr = server.accept()
-        # 遇到客户端连接就创建新的线程
-        pool.submit(run, conn, addr, mutex)
-    
+        # 接收客户端登录的用户名,筛选重复登录
+        username_len = conn.recv(4)[0]
+        username = conn.recv(username_len).decode('utf-8')
+        if username not in login_user_lst:
+            # 发送登录正常标识符
+            conn.send('1'.encode('utf-8'))
+            login_user_lst.append(username)
+            print(login_user_lst)
+            pool.submit(run, conn, addr, mutex, username)
+
+        else:
+            # 发送重复登录表示符
+            conn.send("2".encode('utf-8'))
+
     server.close()
 
 
-if __name__ == '__main__':
-    # 创建线程池,最大同时运行线程数量为10
-    mutex = Lock()
-    pool = ThreadPoolExecutor(10)
+# if __name__ == '__main__':
+#     # 创建线程池,最大同时运行线程数量为10
+#     mutex = Lock()
+#     login_user_lst = []
+#     pool = ThreadPoolExecutor(MAX_THREADS)
+#     server(SERVER_IP, SERVER_PORT, pool)
+
+mutex = Lock()
+login_user_lst = []
+def start():
+    pool = ThreadPoolExecutor(MAX_THREADS)
     server(SERVER_IP, SERVER_PORT, pool)
 
 
