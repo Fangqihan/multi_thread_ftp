@@ -23,3 +23,13 @@ def collect(conn, q, login_user_lst, username):
     conn.close()  # 若客户端那边的连接断开,那么这边的conn也应该断开
     t = q.get()  # 从队列中移除一个线程
     login_user_lst.remove(username)
+
+import queue
+q = queue.Queue(1)
+# q.put(1)
+try:
+    q.put(1, block=False, timeout=0.5)
+except :
+    print('9')
+else:
+    print('7')

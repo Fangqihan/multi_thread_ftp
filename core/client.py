@@ -106,56 +106,61 @@ def run_client(**kwargs):
     upload_dir = kwargs.get('upload_dir', '')
     allowed_storage = kwargs.get('allowed_storage', '')
     username = kwargs.get('username', '')
-    # 向服务端发送当前进程登录的用户名
-    struct_obj = struct.pack('i', len(username))
-    client.send(struct_obj)
-    client.send(username.encode('utf-8'))
-    # 接收服务端返回的结果
-    res = client.recv(1).decode('utf-8')
+    full_status = client.recv(1)
+    full_status = full_status.decode('utf-8')
+    if full_status == '9':
+        print('服务器已经满负荷,请稍后登录')
+        return
+    elif full_status == '8':
+        # 向服务端发送当前进程登录的用户名
+        struct_obj = struct.pack('i', len(username))
+        client.send(struct_obj)
+        client.send(username.encode('utf-8'))
+        # 接收服务端返回的结果
+        res = client.recv(1).decode('utf-8')
 
-    if res == '1':
-        print('登录成功'.center(20, '-'))
+        if res == '1':
+            print('登录成功'.center(20, '-'))
 
-        while True:
-            print('用户操作主界面'.center(20, '-'))
-            choice = input('1.上传\n2.下载\n3.查看已下载文件\n4.查看待上传文件\n5.退出登录\n6.升级存储空间\n输入操作编号>>> ').strip()
-            if choice in ['1', '2', '3', '4', '5', '6']:
+            while True:
+                print('用户操作主界面'.center(20, '-'))
+                choice = input('1.上传\n2.下载\n3.查看已下载文件\n4.查看待上传文件\n5.退出登录\n6.升级存储空间\n输入操作编号>>> ').strip()
+                if choice in ['1', '2', '3', '4', '5', '6']:
 
-                if choice == '1':
-                    # 上传本地文件
-                    client.send(choice.encode('utf-8'))  # 将选择信息反馈给服务器
-                    upload(client, upload_dir)
+                    if choice == '1':
+                        # 上传本地文件
+                        client.send(choice.encode('utf-8'))  # 将选择信息反馈给服务器
+                        upload(client, upload_dir)
 
-                elif choice == '2':
-                    # 下载服务器文件
-                    client.send(choice.encode('utf-8'))
-                    download(client, download_dir, allowed_storage)
+                    elif choice == '2':
+                        # 下载服务器文件
+                        client.send(choice.encode('utf-8'))
+                        download(client, download_dir, allowed_storage)
 
-                elif choice == '3':
-                    print('用户已下载文件'.center(20, '-'))  # 查看用户的download目录文件
-                    show_user_file_holder(type='download', dir=download_dir, allowed_storage=allowed_storage)
-                    input()
+                    elif choice == '3':
+                        print('用户已下载文件'.center(20, '-'))  # 查看用户的download目录文件
+                        show_user_file_holder(type='download', dir=download_dir, allowed_storage=allowed_storage)
+                        input()
 
-                elif choice == '4':
-                    print('用户待上传文件'.center(20, '-'))  # 查看用户的upload目录的可上传文件
-                    show_user_file_holder(type='upload',dir=upload_dir)
-                    input()
+                    elif choice == '4':
+                        print('用户待上传文件'.center(20, '-'))  # 查看用户的upload目录的可上传文件
+                        show_user_file_holder(type='upload',dir=upload_dir)
+                        input()
 
-                elif choice == '5':
-                    choice = input('确认退出(q)>>> ')
-                    if choice == 'q' or choice == 'quit':  # 退出并关闭客户端与服务端
-                        client.send('5'.encode('utf8'))
-                        # login(run_client)()
-                        break
+                    elif choice == '5':
+                        choice = input('确认退出(q)>>> ')
+                        if choice == 'q' or choice == 'quit':  # 退出并关闭客户端与服务端
+                            client.send('5'.encode('utf8'))
+                            break
 
-                elif choice == '6':
-                    upgrade_storage(username=username, old_storage=allowed_storage)
+                    elif choice == '6':
+                        upgrade_storage(username=username, old_storage=allowed_storage)
 
-        client.close()
-        exit('退出')
+            client.close()
+            exit('退出')
 
-    elif res == '2':
-        print('\033[1;35m目前不支持多用户登录  \033[0m')
+        elif res == '2':
+            print('\033[1;35m目前不支持多用户登录  \033[0m')
 
 
 if __name__ == '__main__':

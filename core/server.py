@@ -2,7 +2,7 @@
 # @Author  : QiHanFang    @Email   : qihanfang@foxmail.com
 
 from socket import *
-from threading import current_thread, Lock
+from threading import current_thread
 import queue
 import json
 import struct
@@ -25,7 +25,9 @@ def receive(conn, username):
             print('接收到服务端返回主界面')
             break
 
-        if not header_size_obj: break
+        if not header_size_obj:
+            collect(conn, q, login_user_lst, username)
+            break
         # 获取header长度
         header_obj_size = struct.unpack('i', header_size_obj)[0]
         # 获取header信息
@@ -59,24 +61,21 @@ def receive(conn, username):
         conn.send(result_size)
         conn.send(result_bytes)
         break
-    collect(conn, q, login_user_lst, username)
-    # conn.close()  # 若客户端那边的连接断开,那么这边的conn也应该断开
-    # t = q.get()  # 从队列中移除一个线程
-    # login_user_lst.remove(username)
-
 
 
 def transfer(conn, username):
     """接收客户端选定的要下载的文件路径,并且将对应的文件传送给客户端"""
     print('线程<%s>开始准备下载'%current_thread().name)
     while True:
-        file_path = conn.recv(8000).decode('utf-8').strip()  # 接收客户端选定的文件路径
+        file_path = conn.recv(8000)  # 接收客户端选定的文件路径
         if file_path == CHOICE_FLAG:  # 检查是否是返回主界面命令
             print('接收到服务端返回主界面')
             break
         if not file_path:
+            collect(conn, q, login_user_lst, username)
             break
-
+        file_path = file_path.decode('utf-8').strip()
+        print(file_path)
         filename = file_path.split('/')[-1]
         try:
             file_size = os.path.getsize(file_path)
@@ -98,10 +97,8 @@ def transfer(conn, username):
         with open(file_path, 'rb') as f:
             for line in f:
                 conn.send(line)
+        print('end')
         break
-
-    # 回收conn, 更新队列和登录姓名列表
-    collect(conn, q, login_user_lst, username)
 
 
 def run(conn, addr):
@@ -111,6 +108,7 @@ def run(conn, addr):
     print('接收...')
     username_len = conn.recv(4)[0]
     username = conn.recv(username_len).decode('utf-8')
+    print('登录的用户名<%s>' % username)
     if username not in login_user_lst:
         # 发送登录正常标识符
         conn.send('1'.encode('utf-8'))
@@ -121,29 +119,27 @@ def run(conn, addr):
         # 发送重复登录表示符
         conn.send("2".encode('utf-8'))
 
-    print('已连接:当前线程<%s>, 客户端端口<%s>' %(current_thread().name, addr[1]))
     while True:
-        try:
-            print('========')
-            choice = conn.recv(1).decode('utf-8')
-            if not choice: break
-            if choice in ['1', '2', '5']:
-                if choice == '1':
-                    print('接收到1')
-                    receive(conn, username)  # 开始接收客户端上传的文件
+        print('已连接:当前线程<%s>, 客户端端口<%s>' % (current_thread().name, addr[1]))
 
-                elif choice == '2':
-                    print('接收到2')
-                    transfer(conn, username)  # 开始向客户端发送文件
-
-                elif choice == '5':
-                    break  # 响应客户端的操作, 退出while循环并关闭conn连接
-
-        except ConnectionResetError:
+        choice = conn.recv(1)
+        if not choice:
+            collect(conn, q, login_user_lst, username)
             break
+        print('choice<%s>' % choice)
+        choice = choice.decode('utf-8')
+        if choice in ['1', '2', '5']:
+            if choice == '1':
+                print('接收到1')
+                receive(conn, username)  # 开始接收客户端上传的文件
 
-    collect(conn, q, login_user_lst, username)
+            elif choice == '2':
+                print('接收到2')
+                transfer(conn, username)  # 开始向客户端发送文件
 
+            elif choice == '5':
+                collect(conn, q, login_user_lst, username)
+                break  # 响应客户端的操作, 退出while循环并关闭conn连接
 
 
 def server(ip, port):
@@ -152,6 +148,7 @@ def server(ip, port):
     server.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
     server.bind((ip, port))
     server.listen(5)
+
     while True:
         # 生成套接字对象, 等待客户上门
         print("进入待连接状态>>> ")
@@ -159,7 +156,16 @@ def server(ip, port):
         conn, addr = server.accept()
         print(addr)
         t = Thread(target=run, args=(conn, addr))
-        q.put(t)
+        try:
+            q.put(t, block=False, timeout=0.5)
+            # 阻塞会抛出queue.Full异常
+        except queue.Full:
+            # 抛出满队列的异常,并发送相应状态码
+            conn.send('9'.encode('utf-8'))
+        else:
+            # 正常状态码
+            conn.send('8'.encode('utf-8'))
+
         t.start()
 
 

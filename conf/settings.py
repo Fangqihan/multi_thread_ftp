@@ -11,7 +11,7 @@ sys.path.append(BASE_DIR)
 
 
 SERVER_IP = '127.0.0.1'
-SERVER_PORT = 9013
+SERVER_PORT = 9000
 LISTEN_NUM = 5
 
 SERVER_SHARE_DIR = '%s/database/server/' % BASE_DIR
