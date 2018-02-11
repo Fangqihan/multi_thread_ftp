@@ -1,12 +1,8 @@
 # -*- coding: utf-8 -*-   @Time    : 18-1-25 下午4:46
 # @Author  : QiHanFang    @Email   : qihanfang@foxmail.com
+import configparser
 
 from conf.settings import *
-import configparser
-from os.path import join
-import os
-
-
 
 
 class User(object):
@@ -24,13 +20,13 @@ def register():
     config = configparser.ConfigParser()
     config.read(CONF_DIR)
     while True:
-        username = input('用户名>>> ').strip()
+        username = input('用户名(至少两位)>>> ').strip()
         if username not in config.sections():
-            if len(username) < 3:
-                print('用户名长度至少是三位')
+            if len(username) < 1:
+                print('\033[1;35m用户名长度至少是三位  \033[0m')
             else:
                 while True:
-                    password = input('密码>>> ').strip()
+                    password = input('密码(至少六位)>>> ').strip()
                     if len(password) >=6:
                         storage = input('您申请的空间大小>>> ')
                         if storage.isdigit():
@@ -54,6 +50,9 @@ def register():
                                 print('\033[1;35m 免费申请空间20-1000(M) \033[0m')
                         else:
                             print('\033[1;35m 输入有误 \033[0m')
+
+                    else:
+                        print('\033[1;35m密码长度至少6位  \033[0m')
         else:
             print('\033[1;35m 对不起,该用户名已经被注册 \033[0m', end='\n\n')
 
@@ -67,12 +66,15 @@ def login(func):
                 if choice == '1':
                     config = configparser.ConfigParser()
                     config.read(CONF_DIR)
-                    print()
                     print('登录中'.center(20, '-'))
                     while True:
                         username = input('用户名>>> ').strip()
-                        if username in config.sections():
+                        if username not in config.sections():
+                            print('对不起,用户名输入有误', end='\n\n')
+
+                        else:
                             lock_status = config[username]['lock_status']
+
                             if lock_status == '0':
                                 count = 0
                                 while count < 3:
@@ -90,28 +92,30 @@ def login(func):
 
                                         return func(username=User.username,download_dir=User.download_dir,
                                                     upload_dir=User.upload_dir, allowed_storage=User.allowed_storage)
+                                    print('对不起,您的密码有误')
 
                                     count += 1
+
                                 if count == 3:
                                     config.set(username, 'lock_status', '1')
                                     with open(CONF_DIR, 'w') as f:
                                         config.write(f)
-                                        print('\033[1;35m 对不起,您输入的密码次数过多, 已被锁定! \033[0m', end='\n\n')
+                                    print('\033[1;35m 对不起,您输入的密码次数过多,'
+                                          ' 已被锁定! \033[0m', end='\n\n')
 
                             else:
                                 print('\033[1;35m 对不起,该用户已被冻结 \033[0m', end='\n\n')
-
-                        else:
-                            print('对不起,用户名输入有误', end='\n\n')
 
                 if choice == '2':
                     register()
 
                 if choice == '3':
                     exit('退出')
+
         else:
             return func(username=User.username,download_dir=User.download_dir,
                         upload_dir=User.upload_dir, allowed_storage=User.allowed_storage)
+
     return inner
 
 

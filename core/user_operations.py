@@ -1,23 +1,20 @@
 # -*- coding: utf-8 -*-   @Time    : 18-1-25 下午7:29
 # @Author  : QiHanFang    @Email   : qihanfang@foxmail.com
-
-from conf.settings import *
-
-import json
 import subprocess
 from os.path import join, getsize
 import configparser
 
+from conf.settings import *
+
 
 def user_select_file(**kwargs):
     """用户选择服务端下载的文件并返回具体路径"""
-    global file_path
-    file_path = ''
+    # # global file_path
+    # file_path = ''
     if kwargs.get('type') == 'get':
         while True:
-            print()
             print('服务器文件目录'.center(20, '-'))
-            ls_obj = subprocess.Popen('ls %s' % SERVER_SHARE_DIR, shell=True, stdout=subprocess.PIPE
+            ls_obj = subprocess.Popen(' ls %s' % SERVER_SHARE_DIR, shell=True, stdout=subprocess.PIPE
                                       , stderr=subprocess.PIPE, )
             print(ls_obj.stdout.read().decode('utf8'))  # 打印文件夹目录
             print(''.center(20, '-'))
@@ -43,12 +40,10 @@ def user_select_file(**kwargs):
                 return CHOICE_FLAG
 
     elif kwargs.get('type') == 'push':
-        print()
-        print('选择上传文件'.center(20, '-'))
+        print('\n'+'选择上传文件'.center(20, '-'))
         upload_dir = kwargs.get('dir', '')
         obj = subprocess.Popen('ls %s' % upload_dir, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, )
-        print(obj.stdout.read().decode('utf8'))
-        print()
+        print(obj.stdout.read().decode('utf8')+'\n')
         while True:
             choice = input('选择文件(q.返回主界面)>>> ').strip()
             if choice == 'q':

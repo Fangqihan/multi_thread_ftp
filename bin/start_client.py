@@ -10,7 +10,6 @@ PRO_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(PRO_DIR)
 
 from core.client import run_client
-print(os.getpid())
 run_client()
 
 

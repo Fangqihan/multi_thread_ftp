@@ -4,8 +4,9 @@
 
 import os
 import sys
+
 PRO_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(PRO_DIR)
 
 from core.server import *
-start()
+start_server()

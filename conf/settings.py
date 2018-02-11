@@ -11,7 +11,7 @@ sys.path.append(BASE_DIR)
 
 
 SERVER_IP = '127.0.0.1'
-SERVER_PORT = 9009
+SERVER_PORT = 9011
 LISTEN_NUM = 5
 
 SERVER_SHARE_DIR = '%s/database/server/' % BASE_DIR
@@ -26,7 +26,7 @@ CHOICE_FLAG = 'q'
 USER_DOWNLOAD_TEMPLATE = join(BASE_DIR, 'database/client/%s/download/')
 USER_UPLOAD_TEMPLATE = join(BASE_DIR, 'database/client/%s/upload/')
 
-MAX_THREADS = 10
+MAX_THREADS = 1
 
 
 
