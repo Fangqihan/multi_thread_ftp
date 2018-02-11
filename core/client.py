@@ -57,6 +57,7 @@ def download(client, download_dir, allowed_storage):
 
 def upload(client, upload_dir):
     """从本地upload目录下选择文件上传至服务器"""
+
     while True:
         # 1.选定上传的文件并获取其存储路径
         file_path = user_select_file(type='push', dir=upload_dir)

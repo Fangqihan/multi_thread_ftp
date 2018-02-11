@@ -16,3 +16,10 @@ def get_file_md5(file_path):
             size += 8192
 
     return m.hexdigest()
+
+
+def collect(conn, q, login_user_lst, username):
+    """回收conn, 更新队列和已登录姓名列表"""
+    conn.close()  # 若客户端那边的连接断开,那么这边的conn也应该断开
+    t = q.get()  # 从队列中移除一个线程
+    login_user_lst.remove(username)

@@ -9,13 +9,13 @@ import struct
 from threading import Thread
 
 from conf.settings import *
-from utils.common_func import get_file_md5
+from utils.common_func import get_file_md5, collect
 
 login_user_lst = []
 q = queue.Queue(MAX_THREADS)  # 设置最大线程数量
 
 
-def receive(conn):
+def receive(conn, username):
     """接收客户端发过来的文件,并保存至服务器的设定的存储文件夹下"""
     print('当前线程<%s>'%current_thread().name)
     while True:
@@ -25,7 +25,7 @@ def receive(conn):
             print('接收到服务端返回主界面')
             break
 
-        if not header_size_obj: continue
+        if not header_size_obj: break
         # 获取header长度
         header_obj_size = struct.unpack('i', header_size_obj)[0]
         # 获取header信息
@@ -59,15 +59,22 @@ def receive(conn):
         conn.send(result_size)
         conn.send(result_bytes)
         break
+    collect(conn, q, login_user_lst, username)
+    # conn.close()  # 若客户端那边的连接断开,那么这边的conn也应该断开
+    # t = q.get()  # 从队列中移除一个线程
+    # login_user_lst.remove(username)
 
 
-def transfer(conn):
+
+def transfer(conn, username):
     """接收客户端选定的要下载的文件路径,并且将对应的文件传送给客户端"""
     print('线程<%s>开始准备下载'%current_thread().name)
     while True:
         file_path = conn.recv(8000).decode('utf-8').strip()  # 接收客户端选定的文件路径
         if file_path == CHOICE_FLAG:  # 检查是否是返回主界面命令
             print('接收到服务端返回主界面')
+            break
+        if not file_path:
             break
 
         filename = file_path.split('/')[-1]
@@ -92,6 +99,9 @@ def transfer(conn):
             for line in f:
                 conn.send(line)
         break
+
+    # 回收conn, 更新队列和登录姓名列表
+    collect(conn, q, login_user_lst, username)
 
 
 def run(conn, addr):
@@ -120,11 +130,11 @@ def run(conn, addr):
             if choice in ['1', '2', '5']:
                 if choice == '1':
                     print('接收到1')
-                    receive(conn)  # 开始接收客户端上传的文件
+                    receive(conn, username)  # 开始接收客户端上传的文件
 
                 elif choice == '2':
                     print('接收到2')
-                    transfer(conn)  # 开始向客户端发送文件
+                    transfer(conn, username)  # 开始向客户端发送文件
 
                 elif choice == '5':
                     break  # 响应客户端的操作, 退出while循环并关闭conn连接
@@ -132,9 +142,8 @@ def run(conn, addr):
         except ConnectionResetError:
             break
 
-    conn.close()  # 若客户端那边的连接断开,那么这边的conn也应该断开
-    t = q.get()  # 从队列中移除一个线程
-    login_user_lst.remove(username)
+    collect(conn, q, login_user_lst, username)
+
 
 
 def server(ip, port):
