@@ -26,7 +26,7 @@ CHOICE_FLAG = 'q'
 USER_DOWNLOAD_TEMPLATE = join(BASE_DIR, 'database/client/%s/download/')
 USER_UPLOAD_TEMPLATE = join(BASE_DIR, 'database/client/%s/upload/')
 
-MAX_THREADS = 1
+MAX_THREADS = 3
 
 
 

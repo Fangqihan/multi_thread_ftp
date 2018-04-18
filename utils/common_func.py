@@ -24,12 +24,14 @@ def collect(conn, q, login_user_lst, username):
     t = q.get()  # 从队列中移除一个线程
     login_user_lst.remove(username)
 
-import queue
-q = queue.Queue(1)
-# q.put(1)
-try:
-    q.put(1, block=False, timeout=0.5)
-except :
-    print('9')
-else:
-    print('7')
+if __name__ == '__main__':
+
+    import queue
+    q = queue.Queue(1)
+    # q.put(1)
+    try:
+        q.put(1, block=False, timeout=0.5)
+    except :
+        print('9')
+    else:
+        print('7')

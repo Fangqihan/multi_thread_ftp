@@ -12,7 +12,8 @@ from conf.settings import *
 from utils.common_func import get_file_md5, collect
 
 login_user_lst = []
-q = queue.Queue(MAX_THREADS)  # 设置最大线程数量
+# i/o阻塞类型,设置线程队列, 且限制最大线程数量
+q = queue.Queue(MAX_THREADS)
 
 
 def receive(conn, username):
@@ -103,8 +104,7 @@ def transfer(conn, username):
 
 def run(conn, addr):
     """进入新线程,开始接收数据"""
-
-    # 接收客户端登录的用户名,筛选重复登录
+    # 1. 接收客户端登录的用户名,筛选重复登录
     print('接收...')
     username_len = conn.recv(4)[0]
     username = conn.recv(username_len).decode('utf-8')
@@ -150,27 +150,32 @@ def server(ip, port):
     server.listen(5)
 
     while True:
-        # 生成套接字对象, 等待客户上门
+        # 进入待连接状态, 一旦连接便生成套接字对象,并开启子线程
         print("进入待连接状态>>> ")
         # 主线程停留于此,一直等待
         conn, addr = server.accept()
         print(addr)
         t = Thread(target=run, args=(conn, addr))
         try:
-            q.put(t, block=False, timeout=0.5)
             # 阻塞会抛出queue.Full异常
+            q.put(t, block=False, timeout=0.5)
+
         except queue.Full:
-            # 抛出满队列的异常,并发送相应状态码
+            # 给客户端返回异常状态码
             conn.send('9'.encode('utf-8'))
+
         else:
-            # 正常状态码
+            # 返回正常状态码
             conn.send('8'.encode('utf-8'))
 
+        # 启动线程, 但线程启动后,若队列已满,
+        # 则还是不会进入线程子程序,待空出来后,则进入线程
         t.start()
 
 
 def start_server():
     server(SERVER_IP, SERVER_PORT)
+
 
 if __name__ == '__main__':
     start_server()
